@@ -20,7 +20,41 @@ Logger = {
     printTime = true,
 
     printer = {
+        writeToTerm = function(msg, prefix, fg, bg)
+            local default_fg = 0xffffff
+            local default_bg = 0x000000
 
+            if fg ~= nil and type(fg) ~= 'number' then
+                fg = default_fg
+                Logger.log("Foreground bust be number, not ", type(fg), "! Value is ", tostring(fg), {message_type="warning", prefix="Logger_Internals"})
+            end
+            if bg ~= nil and type(bg) ~= 'number' then
+                bg = default_bg
+                Logger.log("Background bust be number, not ", type(bg), "! Value is ", tostring(bg), {message_type="warning", prefix="Logger_Internals"})
+            end
+            fg = fg == nil and 0xffffff or fg
+            bg = bg == nil and 0x000000 or bg
+
+            local term = require("term")
+            local gpu = term.gpu()
+            local lfg = gpu.setForeground(fg)
+            local lbg = gpu.setBackground(bg)
+            term.write(prefix)
+            for _, _msg in ipairs(msg) do
+                term.write(_msg)
+            end
+            term.write("\n")
+            gpu.setForeground(lfg)
+            gpu.setBackground(lbg)
+        end,
+
+        writeToFile = function(msg, prefix)
+            Logger.loggingFile:write(prefix)
+            for _, _msg in ipairs(msg) do
+                Logger.loggingFile:write(_msg)
+            end
+            Logger.loggingFile:write("\n")
+        end,
 
         print = function(...)
             --[[
@@ -73,53 +107,19 @@ Logger = {
                 printToTerm = true
             end
 
-            local writeToTerm = function(msg, prefix, fg, bg)
-                default_fg = 0xffffff
-                default_bg = 0x000000
-
-                if fg ~= nil and type(fg) ~= 'number' then
-                    fg = default_fg
-                    Logger.log("Foreground bust be number, not ", type(fg), "! Value is ", tostring(fg), {message_type="warning", prefix="Logger_Internals"})
-                end
-                if bg ~= nil and type(bg) ~= 'number' then
-                    bg = default_bg
-                    Logger.log("Background bust be number, not ", type(bg), "! Value is ", tostring(bg), {message_type="warning", prefix="Logger_Internals"})
-                end
-                fg = fg == nil and 0xffffff or fg
-                bg = bg == nil and 0x000000 or bg
-
-
-                gpu = term.gpu()
-                lfg = gpu.setForeground(fg)
-                lbg = gpu.setBackground(bg)
-                term.write(prefix)
-                for _, _msg in ipairs(msg) do
-                    term.write(_msg)
-                end
-                term.write("\n")
-                gpu.setForeground(lfg)
-                gpu.setBackground(lbg)
+            if message_type ~= "warning" and message_type ~= "message" and message_type ~= "error" then
+                Logger.log("Next message received with unknown type \"", message_type, "\".", {message_type="warning", prefix="Logger"})
             end
-
-            local writeToFile = function(msg, prefix)
-                Logger.loggingFile:write(prefix)
-                for _, _msg in ipairs(msg) do
-                    Logger.loggingFile:write(_msg)
+            if printToTerm then
+                if message_type == "message" then
+                    Logger.printer.writeToTerm(message, resulting_prefix, 0xFFFFFF)
+                elseif message_type == "error" then
+                    Logger.printer.writeToTerm(message, resulting_prefix, 0xFF0000)
+                else
+                    Logger.printer.writeToTerm(message, resulting_prefix, 0xFFFF00)
                 end
-                Logger.loggingFile:write("\n")
             end
-
-            if message_type == "message" then
-                writeToTerm(message, resulting_prefix, 0xFFFFFF)
-            elseif message_type == "error" then
-                writeToTerm(message, resulting_prefix, 0xFF0000)
-            else
-                if message_type ~= "warning" then
-                    Logger.log("Next message received with unknown type \"", message_type, "\".", {message_type="warning", prefix="Logger"})
-                end
-                writeToTerm(message, resulting_prefix, 0xFFFF00)
-            end
-            writeToFile(message, resulting_prefix)
+            Logger.printer.writeToFile(message, resulting_prefix)
         end
     },
 
