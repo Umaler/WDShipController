@@ -372,10 +372,14 @@ local createControllersManager = function (controllersList)
             if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
                 return false, "moving in progress"
             end
+            self:stopAll()
             local i, cont = self:getAvailableController()
             if cont ~= nil then
                 cont.controller:changeHyper()
                 cont.ready = false
+                return true
+            else
+                return false
             end
             --return self:useJumpFunc("changeHyper")
         end,
@@ -398,6 +402,8 @@ local createControllersManager = function (controllersList)
                 if ret ~= true then
                     return false, v
                 end
+            else
+                self:stopAll()
             end
             return true
         end,
