@@ -56,6 +56,8 @@ local function selectingMenu(title, listOfOptions)
             write(i, ofg, obg)
         end
     end
+    term.gpu().setForeground(ofg)
+    term.gpu().setBackground(obg)
 
     local controlState = "nothing" -- can be nothing, down, up, select
     while controlState ~= "select" do
