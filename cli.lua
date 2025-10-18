@@ -17,8 +17,8 @@ local function selectingMenu(title, listOfOptions)
         item_shift = item_shift + 1
     end
 
-    local ofg = term.gpu().getForeground()
-    local obg = term.gpu().getBackground()
+    local ofg = 0xFFFFFF
+    local obg = 0x000000
 
     if #listOfOptions == 0 then
         return
@@ -28,14 +28,15 @@ local function selectingMenu(title, listOfOptions)
         return 0x000000, 0xFFFFFF
     end
 
+    local write = function(i, fg, bg)
+        term.gpu().setForeground(fg)
+        term.gpu().setBackground(bg)
+        term.setCursor(1, i+item_shift)
+        term.clearLine()
+        term.write(listOfOptions[i])
+    end
+
     local redrawUpdatedLines = function(newSelectedI, lastSelectedI)
-        local write = function(i, fg, bg)
-            term.gpu().setForeground(fg)
-            term.gpu().setBackground(bg)
-            term.setCursor(1, i+item_shift)
-            term.clearLine()
-            term.write(listOfOptions[i])
-        end
         if lastSelectedI ~= nil then
             write(lastSelectedI, ofg, obg)
         end
@@ -48,11 +49,13 @@ local function selectingMenu(title, listOfOptions)
     local selectedOptionI = 1
     term.clear()
     term.write(title)
-    for i=1, #listOfOptions do
-        if i ~= selectedOptionI then
-            redrawUpdatedLines(selectedOptionI, i)
+    write(selectedOptionI, getInvertedColors())
+    if #listOfOptions >= 2 then
+        for i=2, #listOfOptions do
+            write(i, ofg, bfg)
         end
     end
+
     local controlState = "nothing" -- can be nothing, down, up, select
     while controlState ~= "select" do
         e = {event.pull(0.25)}
