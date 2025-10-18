@@ -178,7 +178,7 @@ local createController = function (controllerComponent)
                 self.rawController.enable(true)
                 return true
             else
-                return false
+                return false, "failed to engage hyperdrive"
             end
         end,
 
@@ -253,34 +253,33 @@ local createControllersManager = function (controllersList)
             return true, {i, controller}
         end,
 
-        jumpTo = function (self, x, y, z)
-            checkArg(1, x, "number")
-            checkArg(2, y, "number")
-            checkArg(3, z, "number")
+        useJumpFunc = function(self, funcName, ...)
             local s, v = self:selectController()
             if not s then
                 return false, v
             end
             local i, v = v[1], v[2]
-            v.controller:jumpTo(x, y, z)
+            local s = {v.controller[funcName](v.controller, ...)}
+            if #s >= 1 and s[1] ~= nil and s[1] == false then
+                return table.unpack(s)
+            end
             --v.ready = false
             self.nowJumping = i
             return true
+        end,
+
+        jumpTo = function (self, x, y, z)
+            checkArg(1, x, "number")
+            checkArg(2, y, "number")
+            checkArg(3, z, "number")
+            return self:useJumpFunc("jumpTo", x, y, z)
         end,
 
         jump = function(self, f, u, r)
             checkArg(1, f, "number")
             checkArg(2, u, "number")
             checkArg(3, r, "number")
-            local s, v = self:selectController()
-            if not s then
-                return false, v
-            end
-            local i, v = v[1], v[2]
-            v.controller:jump(f, u, r)
-            --v.ready = false
-            self.nowJumping = i
-            return true
+            return self:useJumpFunc("jump", f, u, r)
         end,
 
         getMaxJumpDistance = function(self)
@@ -292,19 +291,17 @@ local createControllersManager = function (controllersList)
             return v.controller:getMaxJumpDistance()
         end,
 
-        changeHyper = function(self)
+        getCurrentPosition = function(self)
             local s, v = self:selectController()
             if not s then
                 return false, v
             end
-            local i, v = v[1], v[2]
-            if v.controller:changeHyper() then
-                --v.ready = false
-                self.nowJumping = i
-                return true
-            else
-                return false, "Unable to enter hyperspace"
-            end
+            local v = v[2]
+            return v.controller:getCoords()
+        end,
+
+        changeHyper = function(self)
+            return self:useJumpFunc("changeHyper")
         end,
 
         configDimesions = function (self, configurableController, controllerConfigurer)
@@ -385,7 +382,7 @@ end
 
 local function unregisterEventsDriver(ids)
     for _, id in ipairs(ids) do
-        event.close(id)
+        event.cancel(id)
     end
 end
 

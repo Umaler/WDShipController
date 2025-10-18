@@ -184,9 +184,19 @@ local function mainMenu()
                     local sy = tonumber(io.read())
                     io.write("Enter second z: ")
                     local sz = tonumber(io.read())
+
+                    if fx == nil or fy == nil or fz == nil or
+                       sx == nil or sy == nil or sz == nil
+                    then
+                       print("You entered one or more blank value, so leaving the old values")
+                       io.read()
+                       return
+                    end
+
                     selectedController:setGlobalDims(fx, fy, fz, sx, sy, sz)
                 else
                     term.clear()
+                    print("Enter dimensions or leave it blank to remain the old one")
                     io.write("Enter forward: ")
                     local f = tonumber(io.read())
                     io.write("Enter up: ")
@@ -224,12 +234,18 @@ local function mainMenu()
                 )
                 if jumpType == 1 then
                     term.clear()
+                    print("Enter coordinates or leave it blank to remain the old one")
                     io.write("Enter x: ")
                     local x = tonumber(io.read())
                     io.write("Enter y: ")
                     local y = tonumber(io.read())
                     io.write("Enter z: ")
                     local z = tonumber(io.read())
+
+                    local oldx, oldy, oldz = controllersManager:getPosition()
+                    if x == nil then x = oldx end
+                    if y == nil then y = oldy end
+                    if z == nil then z = oldz end
 
                     s, e = controllersManager:jumpTo(x, y, z)
                     if not s then
@@ -244,6 +260,12 @@ local function mainMenu()
                     local y = tonumber(io.read())
                     io.write("Enter right:   ")
                     local z = tonumber(io.read())
+
+                    local oldx, oldy, oldz = controllersManager:getPosition()
+                    if x == nil then x = 0 end
+                    if y == nil then y = 0 end
+                    if z == nil then z = 0 end
+
                     s, e = controllersManager:jump(x, y, z)
                     if not s then
                         print("Failed to jump because: ", e)
@@ -330,7 +352,12 @@ local function mainMenu()
         if i == nil then
             break
         end
-        sub_menus[i]()
+        s, e = pcall(sub_menus[i])
+        if not s then
+            term.clear()
+            print("Error in menu: ", e)
+            io.read()
+        end
     end
 
     return true
