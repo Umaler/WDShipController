@@ -143,6 +143,7 @@ local function mainMenu()
             "set dimensions",
             "jump",
             "stop jump",
+            "is jumping in progress",
             "enter/leave hyperspace",
             "get max jump distance",
             "sync controllers dimensions",
@@ -278,6 +279,17 @@ local function mainMenu()
                 controllersManager:stopJumping()
                 term.clear()
                 print("Successfully stoped jumping")
+                io.read()
+            end,
+
+            function()
+                local jumping = controllersManager:isJumpingInProgress()
+                term.clear()
+                if jumping then
+                    print("Jumping in progress")
+                else
+                    print("No jumps are planned now")
+                end
                 io.read()
             end,
 

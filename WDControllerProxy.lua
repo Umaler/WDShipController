@@ -118,10 +118,10 @@ local createController = function (controllerComponent)
             if pz < nz then pz, nz = nz, pz end
 
             return x + px,
-                   y + rpy,
+                   y + py,
                    z + pz,
                    x - nx,
-                   y - rny,
+                   y - ny,
                    z - nz
         end,
 
@@ -183,8 +183,10 @@ local createController = function (controllerComponent)
         end,
 
         deactivate = function(self)
+            self.rawController.command("MANUAL")
             self.rawController.enable(false)
             self.rawController.command("OFFLINE")
+            self.rawController.enable(false)
         end,
 
         setName = function(self, name)
@@ -231,8 +233,10 @@ local createControllersManager = function (controllersList)
 
     local ControllersManager = {
         controllers = confControllersList,
+        jumpingSeqThread = nil,
         nowJumping = 0,
-        isMainThreadCreated = false,
+        jumpDetectionThread = nil,
+        jumpDetectionPeriod = 5.0,
 
         getAvailableController = function (self)
             for i, controllerConf in ipairs(self.controllers) do
@@ -253,33 +257,90 @@ local createControllersManager = function (controllersList)
             return true, {i, controller}
         end,
 
-        useJumpFunc = function(self, funcName, ...)
-            local s, v = self:selectController()
-            if not s then
-                return false, v
+        isOnPosition = function(self, x, y, z)
+            local cont = self.controllers[1].controller
+            local px, py, pz, nx, ny, nz = cont:getGlobalDims()
+            if x < px and x > nx and
+               y < py and y > ny and
+               z < pz and z > nz
+            then
+                return true
+            else
+                return false
             end
-            local i, v = v[1], v[2]
-            local s = {v.controller[funcName](v.controller, ...)}
-            if #s >= 1 and s[1] ~= nil and s[1] == false then
-                return table.unpack(s)
+        end,
+
+        stopAll = function(self)
+            for _, cont in ipairs(self.controllers) do
+                cont.controller:deactivate()
             end
-            --v.ready = false
-            self.nowJumping = i
-            return true
+        end,
+
+        isJumpingInProgress = function(self)
+            if self.jumpingSeqThread == nil or coroutine.status(self.jumpingSeqThread) == "dead" then
+                return false
+            else
+                return true
+            end
         end,
 
         jumpTo = function (self, x, y, z)
             checkArg(1, x, "number")
             checkArg(2, y, "number")
             checkArg(3, z, "number")
-            return self:useJumpFunc("jumpTo", x, y, z)
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                coroutine.resume(self.jumpingSeqThread, "stopJumping")
+            end
+
+            self.jumpingSeqThread = coroutine.create(function()
+                local paused = false
+                while true do
+                    local msg = coroutine.yield()
+                    self:stopAll()
+                    if msg == "stopJumping" then
+                        return
+                    elseif ((msg == "jumped" or msg == "custom_ship_cooldown") and (not paused)) or msg == "unpause" then
+                        paused = false
+                        if self:isOnPosition(x, y, z) then
+                            return
+                        else
+                            local i, cont = self:getAvailableController()
+                            if cont ~= nil then
+                                cont.controller:jumpTo(x, y, z)
+                                cont.ready = false
+                            end
+                        end
+                    elseif msg == "pause" then
+                        paused = true
+                    end
+                end
+            end)
+
+            local ret, v = coroutine.resume(self.jumpingSeqThread)
+            if ret ~= true then
+                return false, v
+            end
+            ret, v = coroutine.resume(self.jumpingSeqThread, "jumped")
+            if ret ~= true then
+                return false, v
+            end
+            return true
         end,
 
         jump = function(self, f, u, r)
             checkArg(1, f, "number")
             checkArg(2, u, "number")
             checkArg(3, r, "number")
-            return self:useJumpFunc("jump", f, u, r)
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                return false, "Jumping in progress"
+            end
+            local s, v = self:selectController()
+            if not s then
+                return false, v
+            end
+            local i, cont = v[1], v[2]
+            cont.controller:jump(f, u, r)
+            return true
         end,
 
         getMaxJumpDistance = function(self)
@@ -291,7 +352,7 @@ local createControllersManager = function (controllersList)
             return v.controller:getMaxJumpDistance()
         end,
 
-        getCurrentPosition = function(self)
+        getPosition = function(self)
             local s, v = self:selectController()
             if not s then
                 return false, v
@@ -317,11 +378,13 @@ local createControllersManager = function (controllersList)
         end,
 
         stopJumping = function(self)
-            local nj = self.nowJumping
-            if nj == 0 or nj == nil then
-                return
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                local ret, v = coroutine.resume(self.jumpingSeqThread, "stopJumping")
+                if ret ~= true then
+                    return false, v
+                end
             end
-            self.controllers[nj].controller:deactivate()
+            return true
         end,
 
         setName = function(self, name, idx)
@@ -334,23 +397,40 @@ local createControllersManager = function (controllersList)
             end
         end,
 
-        createMainThread = function(self)
-            if isMainThreadCreated then
+        onJumped = function(self)
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                local ret, v = coroutine.resume(self.jumpingSeqThread, "jumped")
+                error(v)
+            end
+        end,
+
+        onCooldown = function(self)
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                local ret, v = coroutine.resume(self.jumpingSeqThread, "custom_ship_cooldown")
+                error(v)
+            end
+        end,
+
+        createJumpDetectionThread = function(self)
+            if self.jumpDetectionThread ~= nil then
                 return
             end
-
-            local function main()
-                local state = "nothing"
+            self.jumpDetectionThread = thread.create(function()
+                local lastEnergies = {}
                 while true do
-                    event.pull()
+                    os.sleep(self.jumpDetectionPeriod)
+                    for _, cont in ipairs(self.controllers) do
+                        if cont.controller.rawController.command() == "IDLE" then
+                            self:onJumped()
+                            break
+                        end
+                    end
                 end
-                self:getAvailableController()
-            end
-
-            isMainThreadCreated = true
+            end)
         end,
     }
 
+    ControllersManager:createJumpDetectionThread()
     return ControllersManager
 end
 
@@ -361,6 +441,7 @@ local function processCooldownEvent(controller, name, ...)
         local addr = c:getControllerAddr()
         if addr == r_addr then
             cont.ready = true
+            controller:onCooldown()
             break
         end
     end
