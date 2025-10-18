@@ -369,7 +369,15 @@ local createControllersManager = function (controllersList)
         end,
 
         changeHyper = function(self)
-            return self:useJumpFunc("changeHyper")
+            if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
+                return false, "moving in progress"
+            end
+            local i, cont = self:getAvailableController()
+            if cont ~= nil then
+                cont.controller:changeHyper()
+                cont.ready = false
+            end
+            --return self:useJumpFunc("changeHyper")
         end,
 
         configDimesions = function (self, configurableController, controllerConfigurer)
@@ -407,14 +415,14 @@ local createControllersManager = function (controllersList)
         onJumped = function(self)
             if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
                 local ret, v = coroutine.resume(self.jumpingSeqThread, "jumped")
-                error(v)
+                if not ret then error(v) end
             end
         end,
 
         onCooldown = function(self)
             if self.jumpingSeqThread ~= nil and coroutine.status(self.jumpingSeqThread) ~= "dead" then
                 local ret, v = coroutine.resume(self.jumpingSeqThread, "custom_ship_cooldown")
-                error(v)
+                if not ret then error(v) end
             end
         end,
 
