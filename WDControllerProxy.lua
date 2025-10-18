@@ -403,6 +403,12 @@ local createControllersManager = function (controllersList)
                     return false, v
                 end
             else
+                for _, cont in ipairs(self.controllers) do
+                    if cont.controller.rawController.command() == "HYPERDRIVE" then
+                        cont.controller:deactivate()
+                        cont.ready = true
+                    end
+                end
                 self:stopAll()
             end
             return true
