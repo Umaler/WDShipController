@@ -141,8 +141,8 @@ local createController = function (controllerComponent)
             local f, u, r = self:globalToRelativeMoves(px, py, pz)
             local b, d, l = self:globalToRelativeMoves(nx, ny, nz)
 
-            if f < 0 then f, b = -b, -f end
-            if r < 0 then r, l = -l, -r end
+            if f < 0 then f, b = -f, -b end
+            if r < 0 then r, l = -r, -l end
 
             self:setDims(f, u, r, b, d, l)
         end,
