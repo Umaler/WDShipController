@@ -49,7 +49,8 @@ local function selectingMenu(title, listOfOptions)
     local selectedOptionI = 1
     term.clear()
     term.write(title)
-    write(selectedOptionI, getInvertedColors(ofg, obg))
+    local ifg, ibg = getInvertedColors(ofg, obg)
+    write(selectedOptionI, ifg, ibg)
     if #listOfOptions >= 2 then
         for i=2, #listOfOptions do
             write(i, ofg, obg)
