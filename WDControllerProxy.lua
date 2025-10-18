@@ -301,10 +301,14 @@ local createControllersManager = function (controllersList)
 
             self.jumpingSeqThread = coroutine.create(function()
                 local paused = false
+                local lastJumper = 0
                 while true do
                     local msg = coroutine.yield()
                     self:stopAll()
                     if msg == "stopJumping" then
+                        if lastJumper ~= 0 then
+                            self.controllers[lastJumper].ready = true
+                        end
                         return
                     elseif ((msg == "jumped" or msg == "custom_ship_cooldown") and (not paused)) or msg == "unpause" then
                         paused = false
@@ -315,6 +319,7 @@ local createControllersManager = function (controllersList)
                             if cont ~= nil then
                                 cont.controller:jumpTo(x, y, z)
                                 cont.ready = false
+                                lastJumper = i
                             end
                         end
                     elseif msg == "pause" then
