@@ -4,7 +4,7 @@ local repo = "https://raw.githubusercontent.com/Umaler/WDShipController/refs/hea
 local branch = "master"
 
 local function getFileURL(fileName)
-    return string.format(%s%s/%s, repo, branch, fileName)
+    return string.format("%s%s/%s", repo, branch, fileName)
 end
 
 shell.execute("mkdir /usr")
