@@ -49,10 +49,10 @@ local function selectingMenu(title, listOfOptions)
     local selectedOptionI = 1
     term.clear()
     term.write(title)
-    write(selectedOptionI, table.unpack({getInvertedColors()}))
+    write(selectedOptionI, getInvertedColors(ofg, obg))
     if #listOfOptions >= 2 then
         for i=2, #listOfOptions do
-            write(i, ofg, bfg)
+            write(i, ofg, obg)
         end
     end
 
