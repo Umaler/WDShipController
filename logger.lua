@@ -15,8 +15,14 @@ end
 
 fs.makeDirectory("/var/log")
 
+if Logger ~= nil then
+    return Logger
+end
+
+local defaultLogFile = io.open("/var/log/default_log_file", "a")
+
 Logger = {
-    loggingFile = io.open("/var/log/default_log_file", "a"),
+    loggingFile = defaultLogFile,
     printTime = true,
 
     printer = {
@@ -42,6 +48,7 @@ Logger = {
             term.write(prefix)
             for _, _msg in ipairs(msg) do
                 term.write(_msg)
+                term.write(" ")
             end
             term.write("\n")
             gpu.setForeground(lfg)
@@ -49,11 +56,17 @@ Logger = {
         end,
 
         writeToFile = function(msg, prefix)
+            if Logger.loggingFile == nil then
+                return
+            end
+
             Logger.loggingFile:write(prefix)
             for _, _msg in ipairs(msg) do
                 Logger.loggingFile:write(_msg)
+                Logger.loggingFile:write(" ")
             end
             Logger.loggingFile:write("\n")
+            Logger.loggingFile:flush()
         end,
 
         print = function(...)
@@ -128,7 +141,7 @@ Logger = {
         if not s then
             local toss, tose = pcall(tostring, e)
             if not toss then
-                Logger.log("Error during logging. Error message is unprintable! Convering error: ", tose, {message_type="error"})
+                Logger.log("Error during logging. Error message is unprintable! Converted error: ", tose, {message_type="error"})
             else
                 Logger.log("Error during logging: ", tose, {message_type="error", prefix="Logger"})
             end
@@ -138,6 +151,10 @@ Logger = {
         end
     end
 }
+
+if Logger.loggingFile == nil then
+    Logger.log("Failed to open logging file!", {message_type="error", prefix="Logger"})
+end
 
 --[[
 Example of usage:
