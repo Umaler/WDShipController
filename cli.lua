@@ -11,6 +11,14 @@ local component = require("component")
 
 local controllersManager = wdc.createControllersManager()
 
+local function valueOrDefault(value, default)
+    if value ~= nil then
+        return value
+    else
+        return default
+    end
+end
+
 local function selectingMenu(title, listOfOptions)
     local item_shift=1
     if title ~= nil and title ~= "" then
@@ -203,19 +211,24 @@ local function mainMenu()
                     selectedController:setGlobalDims(fx, fy, fz, sx, sy, sz)
                 else
                     term.clear()
+
+                    local _f, _u, _r, _b, _d, _l = selectedController:getDims()
                     print("Enter dimensions or leave it blank to remain the old one")
                     io.write("Enter forward: ")
-                    local f = tonumber(io.read())
+                    local f = valueOrDefault(tonumber(io.read()), _f)
                     io.write("Enter up: ")
-                    local u = tonumber(io.read())
+                    local u = valueOrDefault(tonumber(io.read()), _u)
                     io.write("Enter right: ")
-                    local r = tonumber(io.read())
+                    local r = valueOrDefault(tonumber(io.read()), _r)
                     io.write("Enter back: ")
-                    local b = tonumber(io.read())
+                    local b = valueOrDefault(tonumber(io.read()), _b)
                     io.write("Enter down: ")
-                    local d = tonumber(io.read())
-                    io.write("Enter l: ")
-                    local l = tonumber(io.read())
+                    local d = valueOrDefault(tonumber(io.read()), _d)
+                    io.write("Enter left: ")
+                    local l = valueOrDefault(tonumber(io.read()), _l)
+
+                    if f == nil then f = _f end
+
                     selectedController:setDims(f, u, r, b, d, l)
                 end
                 local setForAll = selectingMenu(
@@ -239,45 +252,39 @@ local function mainMenu()
                         "relatively"
                     }
                 )
+
+                local oldx, oldy, oldz = controllersManager:getPosition()
+                local s, e
                 if jumpType == 1 then
                     term.clear()
                     print("Enter coordinates or leave it blank to remain the old one")
                     io.write("Enter x: ")
-                    local x = tonumber(io.read())
+                    local x = valueOrDefault(tonumber(io.read()), oldx)
                     io.write("Enter y: ")
-                    local y = tonumber(io.read())
+                    local y = valueOrDefault(tonumber(io.read()), oldy)
                     io.write("Enter z: ")
-                    local z = tonumber(io.read())
-
-                    local oldx, oldy, oldz = controllersManager:getPosition()
-                    if x == nil then x = oldx end
-                    if y == nil then y = oldy end
-                    if z == nil then z = oldz end
+                    local z = valueOrDefault(tonumber(io.read()), oldz)
 
                     s, e = controllersManager:jumpTo(x, y, z)
-                    if not s then
-                        print("Failed to jump because: ", e)
-                        io.read()
-                    end
                 elseif jumpType == 2 then
                     term.clear()
                     io.write("Enter forward: ")
-                    local x = tonumber(io.read())
-                    io.write("Enter up:      ")
-                    local y = tonumber(io.read())
-                    io.write("Enter right:   ")
-                    local z = tonumber(io.read())
-
-                    local oldx, oldy, oldz = controllersManager:getPosition()
-                    if x == nil then x = 0 end
-                    if y == nil then y = 0 end
-                    if z == nil then z = 0 end
+                     local x = valueOrDefault(tonumber(io.read()), oldx)
+                    io.write("Enter up: ")
+                    local y = valueOrDefault(tonumber(io.read()), oldy)
+                    io.write("Enter right: ")
+                    local z = valueOrDefault(tonumber(io.read()), oldz)
 
                     s, e = controllersManager:jump(x, y, z)
-                    if not s then
-                        print("Failed to jump because: ", e)
-                        io.read()
-                    end
+                else
+                    print("something went wrong with selecting menu")
+                    io.read()
+                    return
+                end
+
+                if not s then
+                    print("Failed to jump because: ", e)
+                    io.read()
                 end
             end,
 
