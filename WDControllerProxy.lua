@@ -110,19 +110,39 @@ local createController = function (controllerComponent)
         end,
 
         getGlobalDims = function(self)
-            local rpx, rpy, rpz, rnx, rny, rnz = self:getDims()
-            local px, py, pz = self:relativeToGlobalMoves(rpx, rpy, rpz)
-            local nx, ny, nz = self:relativeToGlobalMoves(rnx, rny, rnz)
+            local f, u, r, b, d, l = self:getDims()
             local x, y, z = self:getCoords()
-            if px < nx then px, nx = nx, px end
-            if pz < nz then pz, nz = nz, pz end
 
-            return x + px,
-                   y + py,
-                   z + pz,
-                   x - nx,
-                   y - ny,
-                   z - nz
+            local xdir, _, zdir = self.rawController.getOrientation()
+            if xdir == 1 then
+                return x + f,
+                       y + u,
+                       z + r,
+                       x - b,
+                       y - d,
+                       z - l
+            elseif xdir == -1 then
+                return x + b,
+                       y + u,
+                       z + l,
+                       x - f,
+                       y - d,
+                       z - r
+            elseif zdir == 1 then
+                return x + l,
+                       y + u,
+                       z + f,
+                       x - r,
+                       y - d,
+                       z - b
+            else
+                return x + r,
+                       y + u,
+                       z + b,
+                       x - l,
+                       y - d,
+                       z - f
+            end
         end,
 
         setGlobalDims = function(self, px, py, pz, nx, ny, nz)
@@ -131,18 +151,15 @@ local createController = function (controllerComponent)
             if py < ny then py, ny = ny, py end
             if pz < nz then pz, nz = nz, pz end
 
+            local xdir, _, zdir = self.rawController.getOrientation()
             px, py, pz = px - x, py - y, pz - z
             nx, ny, nz = x - nx, y - ny, z - nz
-
-            local xdir, _, zdir = self.rawController.getOrientation()
-            if xdir == -1 then px, nx = nx, px end
-            if zdir == -1 then pz, nz = nz, pz end
 
             local f, u, r = self:globalToRelativeMoves(px, py, pz)
             local b, d, l = self:globalToRelativeMoves(nx, ny, nz)
 
-            if f < 0 then f, b = -f, -b end
-            if r < 0 then r, l = -r, -l end
+            if f < 0 then f, b = -b, -f end
+            if r < 0 then r, l = -l, -r end
 
             self:setDims(f, u, r, b, d, l)
         end,

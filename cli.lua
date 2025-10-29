@@ -367,10 +367,10 @@ local function mainMenu()
                     }
                 )
                 if setForAll == 1 then
-                    controllersManager:setName(setName)
+                    controllersManager:setName(name, nil)
                 elseif setForAll == 2 then
                     local i = selectController(true)
-                    controllersManager:setName(setName, i)
+                    controllersManager:setName(name, i)
                 end
             end
         }
