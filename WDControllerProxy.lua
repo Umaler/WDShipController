@@ -267,6 +267,8 @@ local createControllersManager = function (controllersList)
         isOnPosition = function(self, x, y, z)
             local cont = self.controllers[1].controller
             local px, py, pz, nx, ny, nz = cont:getGlobalDims()
+            if px < nx then px, nx = nx, px end
+            if pz < nz then pz, nz = nz, pz end
             if x < px and x > nx and
                y < py and y > ny and
                z < pz and z > nz
