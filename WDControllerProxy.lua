@@ -1,7 +1,6 @@
 local component=require("component")
 local table=require("table")
 local Logger = require("logger")
---local Logger=dofile("/home/WDShipController/logger.lua")
 local string=require("string")
 local math=require("math")
 local thread = require("thread")
@@ -95,7 +94,9 @@ local createController = function (controllerComponent)
         end,
 
         getCoords = function(self)
-            return self.rawController.position()
+            local x, y, z = self.rawController.position()
+            x, y, z = tonumber(x), tonumber(y), tonumber(z)
+            return x, y, z
         end,
 
         getDims = function(self)
@@ -262,6 +263,53 @@ local createControllersManager = function (controllersList)
         jumpDetectionThread = nil,
         jumpDetectionPeriod = 5.0,
 
+        -- callback signature must be:
+        -- function (controllersManager: table, isAutoJumping: bool, target : table {x=x, y=y, z=z})
+        -- all callbacks executed as threads and waited for finish
+        callbacksTypes = {
+            beforeJump,
+            afterJump,
+            onStopJumping
+        },
+        beforeJumpCallbacks = {},
+        afterJumpCallbacks = {},
+        onStopJumpingCallbacks = {},
+
+        getTableByCallbackType = function(self, callbackType)
+            local callbacksTable
+            if callbacksType == self.callbacksTypes.beforeJump then
+                callbacksTable = self.beforeJumpCallbacks
+            elseif callbacksType == self.callbacksTypes.afterJump then
+                callbacksTable = self.afterJumpCallbacks
+            elseif callbacksType == self.callbacksTypes.onStopJumping then
+                callbacksTable = self.onStopJumpingCallbacks
+            else
+                error("WDControllerProxy: ControllersManager.execCallbacks: received unknown callbacksType (" .. tostring(callbacksType) .. ")")
+            end
+            return callbacksType
+        end,
+
+        execCallbacks = function(self, callbacksType)
+            local callbacksTable = self:getTableByCallbackType(callbacksType)
+            local threads = {}
+            for _, v in pairs(callbacksTable) do
+                table.insert(threads, thread.create(v))
+            end
+            thread.waitForAll(threads)
+        end,
+
+        addCallback = function(self, callbackType, callback)
+            local callbacksTable = self:getTableByCallbackType(callbackType)
+            local idx = #callbacksTable + 1
+            callbacksTable[idx] = callback
+            return idx
+        end,
+
+        removeCallback = function(self, callbackType, idx)
+            local callbacksTable = self:getTableByCallbackType(callbackType)
+            callbacksTable[idx] = nil
+        end,
+
         getAvailableController = function (self)
             for i, controllerConf in ipairs(self.controllers) do
                 if controllerConf.ready then
@@ -328,10 +376,12 @@ local createControllersManager = function (controllersList)
                         if lastJumper ~= 0 then
                             self.controllers[lastJumper].ready = true
                         end
+                        event.push("stopped_jumps_series")
                         return
                     elseif ((msg == "jumped" or msg == "custom_ship_cooldown") and (not paused)) or msg == "unpause" then
                         paused = false
                         if self:isOnPosition(x, y, z) then
+                            event.push("stopped_jumps_series")
                             return
                         else
                             local i, cont = self:getAvailableController()
@@ -345,13 +395,14 @@ local createControllersManager = function (controllersList)
                         paused = true
                     end
                 end
+                event.push("stopped_jumps_series")
             end)
 
             local ret, v = coroutine.resume(self.jumpingSeqThread)
             if ret ~= true then
                 return false, v
             end
-            ret, v = coroutine.resume(self.jumpingSeqThread, "jumped")
+            ret, v = coroutine.resume(self.jumpingSeqThread, "jumped") -- to forse initial jump
             if ret ~= true then
                 return false, v
             end
