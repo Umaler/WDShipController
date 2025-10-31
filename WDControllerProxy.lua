@@ -95,7 +95,9 @@ local createController = function (controllerComponent)
 
         getCoords = function(self)
             local x, y, z = self.rawController.position()
-            x, y, z = tonumber(x), tonumber(y), tonumber(z)
+            x = tonumber(x)
+            y = tonumber(y)
+            z = tonumber(z)
             return x, y, z
         end,
 
@@ -369,26 +371,36 @@ local createControllersManager = function (controllersList)
             self.jumpingSeqThread = coroutine.create(function()
                 local paused = false
                 local lastJumper = 0
+                local jumping = false
                 while true do
                     local msg = coroutine.yield()
-                    self:stopAll()
+                    -- TODO: rewrite this peace of code
                     if msg == "stopJumping" then
+                        self:stopAll()
                         if lastJumper ~= 0 then
                             self.controllers[lastJumper].ready = true
                         end
+                        jumping = false
                         event.push("stopped_jumps_series")
                         return
                     elseif ((msg == "jumped" or msg == "custom_ship_cooldown") and (not paused)) or msg == "unpause" then
                         paused = false
+                        if msg == "jumped" then
+                            jumping = false
+                        end
                         if self:isOnPosition(x, y, z) then
+                            self:stopAll()
+                            jumping = false
                             event.push("stopped_jumps_series")
                             return
                         else
                             local i, cont = self:getAvailableController()
-                            if cont ~= nil then
+                            if cont ~= nil and not jumping then
+                                self:stopAll()
                                 cont.controller:jumpTo(x, y, z)
                                 cont.ready = false
                                 lastJumper = i
+                                jumping = true
                             end
                         end
                     elseif msg == "pause" then
