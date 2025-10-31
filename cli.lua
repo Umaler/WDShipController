@@ -265,6 +265,20 @@ local function mainMenu()
                     io.write("Enter z: ")
                     local z = valueOrDefault(tonumber(io.read()), oldz)
 
+                    -- for debugging of strange error
+                    if type(x) ~= "number" or
+                       type(y) ~= "number" or
+                       type(z) ~= "number"
+                    then
+                        term.clear()
+                        print("Some strange coordinate received:")
+                        print("X=", x)
+                        print("Y=", y)
+                        print("Z=", z)
+                        print("Press enter to continue")
+                        io.read()
+                    end
+
                     s, e = controllersManager:jumpTo(x, y, z)
                 elseif jumpType == 2 then
                     term.clear()
@@ -274,6 +288,20 @@ local function mainMenu()
                     local y = valueOrDefault(tonumber(io.read()), oldy)
                     io.write("Enter right: ")
                     local z = valueOrDefault(tonumber(io.read()), oldz)
+
+                    -- for debugging of strange error
+                    if type(x) ~= "number" or
+                       type(y) ~= "number" or
+                       type(z) ~= "number"
+                    then
+                        term.clear()
+                        print("Some strange coordinate received:")
+                        print("X=", x)
+                        print("Y=", y)
+                        print("Z=", z)
+                        print("Press enter to continue")
+                        io.read()
+                    end
 
                     s, e = controllersManager:jump(x, y, z)
                 else
